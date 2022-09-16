@@ -1,7 +1,7 @@
-const mapDBToModel = ({
+const mapDBToModelDetail = ({
   id, name, year
 }) => ({
   id, name, year
 });
 
-module.exports = { mapDBToModel };
+module.exports = { mapDBToModelDetail };

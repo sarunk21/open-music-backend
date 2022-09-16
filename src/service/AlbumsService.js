@@ -7,14 +7,14 @@ const InvariantError = require('../exceptions/InvariantError');
 const NotFoundError = require('../exceptions/NotFoundError');
 
 // Utils
-const { mapDBToModel } = require('../utils/albums');
+const { mapDBToModelDetail } = require('../utils/albums');
 
 class AlbumsService {
   constructor() {
     this._pool = new Pool();
   }
 
-  async addAlbum({ name, year}) {
+  async addAlbum({ name, year }) {
     const id = nanoid(16);
 
     const query = {
@@ -41,8 +41,8 @@ class AlbumsService {
     if (!result.rows.length) {
       throw new NotFoundError('Album tidak ditemukan');
     }
-    
-    return result.rows.map(mapDBToModel)[0];
+
+    return result.rows.map(mapDBToModelDetail)[0];
   }
 
   async editAlbumById(id, { name, year }) {

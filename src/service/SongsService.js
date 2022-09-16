@@ -14,12 +14,12 @@ class SongsService {
     this._pool = new Pool();
   }
 
-  async addSong({ title, year, performer, genre, duration = null, albumId = null }) { 
+  async addSong({ title, year, performer, genre, duration = null, albumId = null }) {
     const id = nanoid(16);
 
     const query = {
       text: 'INSERT INTO songs VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      values: [id, title, year,genre, performer, duration, albumId],
+      values: [id, title, year, genre, performer, duration, albumId],
     };
 
     const result = await this._pool.query(query);
@@ -37,6 +37,26 @@ class SongsService {
     return result.rows.map(mapDBToModelAll);
   }
 
+  async getSongTitleOrPerformer(title = null, performer = null) {
+    let query;
+    
+    if (title && performer) {
+      query = {
+        text: 'SELECT * FROM songs WHERE title ILIKE $1 AND performer ILIKE $2',
+        values: ['%'+title+'%', '%'+performer+'%'],
+      };
+    } else {
+      query = {
+        text: 'SELECT * FROM songs WHERE title ILIKE $1 OR performer ILIKE $2',
+        values: ['%'+title+'%', '%'+performer+'%'],
+      };
+    }
+
+    const result = await this._pool.query(query);
+
+    return result.rows.map(mapDBToModelAll);
+  }
+
   async getSongById(id) {
     const query = {
       text: 'SELECT * FROM songs WHERE id = $1',
@@ -47,7 +67,7 @@ class SongsService {
     if (!result.rows.length) {
       throw new NotFoundError('Lagu tidak ditemukan');
     }
-    
+
     return result.rows.map(mapDBToModelDetail)[0];
   }
 

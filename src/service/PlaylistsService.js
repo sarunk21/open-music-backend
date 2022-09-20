@@ -7,8 +7,9 @@ const NotFoundError = require('../exceptions/NotFoundError');
 const AuthorizationError = require('../exceptions/AuthorizationError');
 
 class PlaylistsService {
-  constructor() {
+  constructor(collaborationService) {
     this._pool = new Pool();
+    this._collaborationService = collaborationService;
   }
 
   async addPlaylist({ name, owner }) {
@@ -30,7 +31,10 @@ class PlaylistsService {
 
   async getPlaylists(owner) {
     const query = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON playlists.owner = users.id WHERE playlists.owner = $1',
+      text: `SELECT playlists.id, playlists.name, users.username FROM playlists
+      LEFT JOIN users ON playlists.owner = users.id
+      LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id
+      WHERE playlists.owner = $1 OR collaborations.user_id = $1`,
       values: [owner],
     };
 
@@ -57,9 +61,7 @@ class PlaylistsService {
       text: 'SELECT * FROM playlists WHERE id = $1',
       values: [id],
     };
-    
-    console.log(id, owner);
-    
+
     const result = await this._pool.query(query);
 
     if (!result.rows.length) {
@@ -143,6 +145,71 @@ class PlaylistsService {
 
     if (!result.rows.length) {
       throw new NotFoundError('Id lagu tidak ditemukan');
+    }
+  }
+
+  async verifyUserIsValid(userId) {
+    const query = {
+      text: 'SELECT * FROM users WHERE id = $1',
+      values: [userId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new NotFoundError('Id user tidak ditemukan');
+    }
+  }
+
+  async getPlaylistActivities(playlistId) {
+    const query = {
+      text: `SELECT users.username, 
+      songs.title,
+      playlist_activities.action, 
+      playlist_activities.time 
+      FROM playlist_activities 
+      INNER JOIN users ON playlist_activities.user_id = users.id 
+      INNER JOIN songs ON playlist_activities.song_id = songs.id
+      WHERE playlist_activities.playlist_id = $1
+      ORDER BY playlist_activities.time ASC`,
+      values: [playlistId],
+    };
+
+    const result = await this._pool.query(query);
+
+    return result.rows;
+  }
+
+  async addActivity({ playlistId, songId, userId, action }) {
+    const id = `activity-${nanoid(16)}`;
+
+    const query = {
+      text: 'INSERT INTO playlist_activities VALUES($1, $2, $3, $4, $5) RETURNING id',
+      values: [id, playlistId, songId, userId, action],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new InvariantError('Activity gagal ditambahkan');
+    }
+
+    return result.rows[0].id;
+  }
+
+  async verifyPlaylistAccess(playlistId, userId) {
+    try {
+      await this.verifyPlaylistOwner(playlistId, userId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+
+      try {
+        await this._collaborationService.verifyCollaborator(playlistId, userId);
+      } catch {
+        throw error;
+      }
     }
   }
 }

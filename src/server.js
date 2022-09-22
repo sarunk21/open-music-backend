@@ -9,33 +9,33 @@ const ClientError = require('./exceptions/ClientError');
 
 // Album api
 const albums = require('./api/albums');
-const AlbumsService = require('./service/AlbumsService');
+const AlbumsService = require('./service/postgres/AlbumsService');
 const AlbumsValidator = require('./validator/albums');
 
 // Song api
 const songs = require('./api/songs');
-const SongsService = require('./service/SongsService');
+const SongsService = require('./service/postgres/SongsService');
 const SongsValidator = require('./validator/songs');
 
 // User api
 const users = require('./api/users');
-const UsersService = require('./service/UsersService');
+const UsersService = require('./service/postgres/UsersService');
 const UsersValidator = require('./validator/users');
 
 // Authentication api
 const authentications = require('./api/authentications');
-const AuthenticationsService = require('./service/AuthenticationsService');
+const AuthenticationsService = require('./service/postgres/AuthenticationsService');
 const TokenManager = require('./tokenize/TokenManager');
 const AuthenticationsValidator = require('./validator/authentications');
 
 // Playlists api
 const playlists = require('./api/playlists');
-const PlaylistsService = require('./service/PlaylistsService');
+const PlaylistsService = require('./service/postgres/PlaylistsService');
 const PlaylistsValidator = require('./validator/playlists');
 
 // Collaborations api
 const collaborations = require('./api/collaborations');
-const CollaborationsService = require('./service/CollaborationsService');
+const CollaborationsService = require('./service/postgres/CollaborationsService');
 const CollaborationsValidator = require('./validator/collaborations');
 
 const init = async () => {

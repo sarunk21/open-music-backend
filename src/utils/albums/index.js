@@ -1,7 +1,7 @@
 const mapDBToModelDetail = ({
-  id, name, year
+  id, name, year, coverUrl
 }) => ({
-  id, name, year
+  id, name, year, coverUrl
 });
 
 module.exports = { mapDBToModelDetail };

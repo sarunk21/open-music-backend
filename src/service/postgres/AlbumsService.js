@@ -10,8 +10,9 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDBToModelDetail } = require('../../utils/albums');
 
 class AlbumsService {
-  constructor() {
+  constructor(cacheService) {
     this._pool = new Pool();
+    this._cacheService = cacheService;
   }
 
   async addAlbum({ name, year }) {
@@ -95,13 +96,26 @@ class AlbumsService {
     return true;
   }
 
-  async postAlbumLikeByUserIdAndAlbumId({ userId, albumId }) {
-    const id = `like-${nanoid(16)}`;
+  async verifyAlbumLikeIsExist(albumId) {
+    const query = {
+      text: 'SELECT * FROM albums WHERE id = $1',
+      values: [albumId],
+    };
 
-    if (await this.verifyAlbumLikeByUserIdAndAlbumId({ userId, albumId })) {
-      await this.deleteAlbumLikeByUserIdAndAlbumId({ userId, albumId });
-      return;
+    const result = await this._pool.query(query);
+
+    if (!result.rowCount) {
+      throw new NotFoundError('Anda sudah menyukai album ini');
     }
+  }
+
+  async postAlbumLikeByUserIdAndAlbumId({ userId, albumId }) {
+    await this.verifyAlbumLikeIsExist(albumId);
+    if (await this.verifyAlbumLikeByUserIdAndAlbumId({ userId, albumId })) {
+      return await this.deleteAlbumLikeByUserIdAndAlbumId({ userId, albumId });
+    }
+
+    const id = `like-${nanoid(16)}`;
 
     const query = {
       text: 'INSERT INTO user_album_likes VALUES($1, $2, $3) RETURNING id',
@@ -113,6 +127,8 @@ class AlbumsService {
     if (!result.rows.length) {
       throw new InvariantError('Album gagal ditambahkan');
     }
+
+    await this._cacheService.delete(`likes:${albumId}`);
   }
 
   async deleteAlbumLikeByUserIdAndAlbumId({ userId, albumId }) {
@@ -126,17 +142,26 @@ class AlbumsService {
     if (!result.rows.length) {
       throw new InvariantError('Album gagal dihapus');
     }
+
+    await this._cacheService.delete(`likes:${albumId}`);
   }
 
   async getAlbumLike(id) {
-    const query = {
-      text: 'SELECT COUNT(*) FROM user_album_likes WHERE album_id = $1',
-      values: [id],
-    };
+    try {
+      const result = await this._cacheService.get(`likes:${id}`);
+      return JSON.parse(result);
+    } catch (error) {
+      const query = {
+        text: 'SELECT COUNT(*) FROM user_album_likes WHERE album_id = $1',
+        values: [id],
+      };
 
-    const result = await this._pool.query(query);
+      const result = await this._pool.query(query);
 
-    return parseInt(result.rows[0].count);
+      await this._cacheService.set(`likes:${id}`, JSON.stringify({ number: result.rows[0].count, type: 'cache' }));
+
+      return { number: result.rows[0].count, type: 'db' };
+    }
   }
 
 }

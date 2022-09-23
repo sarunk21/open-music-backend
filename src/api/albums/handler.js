@@ -93,9 +93,13 @@ class AlbumHandler {
     const response = h.response({
       status: 'success',
       data: {
-        likes,
+        likes: parseInt(likes.number),
       },
     });
+
+    if (likes.type == 'cache') {
+      response.header('X-Data-Source', 'cache');
+    }
 
     response.code(200);
     return response;
